@@ -58,23 +58,38 @@ index_in() {
   echo "$def"
 }
 
+# github_noreply_email USER [FALLBACK] -> ID+USER@users.noreply.github.com
+# Uses GitHub's public API (no login needed). Prints FALLBACK if the lookup fails.
+github_noreply_email() {
+  local user=$1 fallback=${2:-} id
+  id=$(curl -fsSL --max-time 10 "https://api.github.com/users/$user" 2>/dev/null \
+       | grep -m1 '"id":' | tr -cd '0-9')
+  if [ -n "$id" ]; then
+    echo "${id}+${user}@users.noreply.github.com"
+  else
+    echo "$fallback"
+  fi
+}
+
 configure_interactive() {
   load_answers
   header "Setup questions (Enter keeps the [default])"
 
   local def_name def_email
   def_name=${GIT_NAME:-$(git config --global user.name 2>/dev/null || id -F 2>/dev/null)}
-  def_email=${GIT_EMAIL:-$(git config --global user.email 2>/dev/null)}
+  def_email=$(git config --global user.email 2>/dev/null)
 
   printf '\n%sGit & GitHub%s\n' "$C_BOLD" "$C_RESET" >/dev/tty
   ask_required GIT_NAME  "Your full name (git author)" "$def_name"
-  ask_required GIT_EMAIL "Personal email (git + SSH key comment)" "$def_email"
   ask_required GH_USER   "Personal GitHub username" "${GH_USER:-}"
+  # Default to GitHub's noreply address: accounts with "Block command line
+  # pushes that expose my email" reject commits made with the real address.
+  ask_required GIT_EMAIL "Commit email (also the SSH key comment)" "${GIT_EMAIL:-$(github_noreply_email "$GH_USER" "$def_email")}"
 
   if ask_yn "Also set up a second (work) GitHub account with its own SSH key?" "${WORK_ENABLED:-n}"; then
     WORK_ENABLED=y
-    ask_required WORK_EMAIL   "Work email" "${WORK_EMAIL:-}"
     ask_required WORK_GH_USER "Work GitHub username" "${WORK_GH_USER:-}"
+    ask_required WORK_EMAIL   "Work commit email" "${WORK_EMAIL:-$(github_noreply_email "$WORK_GH_USER")}"
     ask WORK_DIR "Folder whose repos should use the work identity" "${WORK_DIR:-~/MyProjects/work}"
   else
     WORK_ENABLED=n

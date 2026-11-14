@@ -44,7 +44,7 @@ Every step is safe to re-run.
 |---|---|
 | `homebrew` | Xcode Command Line Tools, Rosetta 2, Homebrew |
 | `packages` | the groups you pick from `packages/*.Brewfile`: **core** (git, gh, jq, mas, Python, pipx, uv, SWI-Prolog, bash, zsh…), **apps** (iTerm2, IntelliJ IDEA, VS Code, Sublime Text, BBEdit, Chrome, Firefox, Telegram, Claude desktop), **fonts** (Meslo/Hack/JetBrains Mono/Fira Code Nerd Fonts), **ios** (CocoaPods, SwiftLint, xcbeautify, xcodes), **extras** (Docker Desktop, Heroku CLI) |
-| `git` | name/email, sensible defaults, `gh` as HTTPS credential helper, optional work identity for a folder |
+| `git` | name and commit email (defaults to your GitHub `noreply` address, so pushes aren't refused when GitHub hides your real email), sensible defaults, `gh` as HTTPS credential helper, optional work identity for a folder |
 | `ssh` | one ed25519 key per GitHub account (personal + optional work), `~/.ssh/config` with `github.com` / `github-work` host aliases, keys in the macOS Keychain, keys uploaded with `gh`, GitHub host keys verified over HTTPS |
 | `shell` | oh-my-zsh + autosuggestions + syntax-highlighting, theme of your choice (agnoster / powerlevel10k / robbyrussell), dotfiles **symlinked** from `dotfiles/`, iTerm2 shell integration |
 | `iterm` | default profile with your color scheme, Nerd Font + size, opens in `~/MyProjects` |

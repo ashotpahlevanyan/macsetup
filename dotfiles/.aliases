@@ -1,0 +1,244 @@
+# main shortcuts
+
+alias edit='open -a "BBEdit"'
+
+# IP6-ON-OFF
+
+alias ipv6off='networksetup -setv6off Wi-Fi'
+alias ipv6on='networksetup -setv6automatic Wi-Fi'
+
+# --- SSH --- ZSH --- BASH ---
+
+alias sublime="subl"
+alias editBash='vim ~/.bash_profile'
+alias editZsh='vim ~/.zshrc'
+alias reloadBash='source ~/.bash_profile'
+alias reloadZsh='source ~/.zshrc'
+alias reloadSSH='killall ssh-agent; eval `ssh-agent`'
+alias reloadAll='source ~/.zshrc && echo \"zsh_reloaded\" && source ~/.bash_profile && echo \"bash_reloaded\" && reloadSSH'
+alias myip='curl ifconfig.me'
+
+alias editor="code"
+
+alias edit-alias="editor ~/.aliases"
+alias caliases="cd && editor .aliases .exports .zshrc .functions .path .bash_profile .bashrc"
+alias edit-path="editor ~/.path"
+alias edit-export="editor ~/.exports"
+alias edit-functions="editor ~/.functions"
+alias edit-zsh="editor ~/.zshrc"
+alias edit-bash="editor ~/.bash_profile"
+alias edit-ssh="editor ~/.ssh"
+alias edit-sshc="editor ~/.ssh/config"
+
+alias github-update-hosts="ssh-keygen -R github.com && curl -L https://api.github.com/meta | jq -r '.ssh_keys | .[]' | sed -e 's/^/github.com /' >> ~/.ssh/known_hosts"
+
+alias bitbucket-update-hosts="ssh-keygen -R bitbucket.org && curl https://bitbucket.org/site/ssh >> ~/.ssh/known_hosts"
+
+alias saliases="cd && editor .aliases .exports .zshrc .functions .path .bash_profile .bashrc"
+
+alias chrome-no-security="open -n -a /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --args --user-data-dir='/tmp/chrome_dev_test' --disable-web-security"
+
+alias node-cln="npm cache clean --force"
+
+# -------
+
+# Aliases
+
+# -------
+
+alias clr="clear" # Clear your terminal screen
+alias flush="sudo discoveryutil udnsflushcaches" # Flush DNS (Yosemite)
+alias flush="killall -HUP mDNSResponder" # Flush DNS (Mavericks, Mountain Lion, Lion)
+alias flush="dscacheutil -flushcache" # Flush DNS (Snow Leopard, Leopard)
+alias ip="curl icanhazip.com" # Your public IP address
+alias ll="ls -al" # List all files in current directory in long list format
+alias ldir="ls -al | grep ^d" # List all directories in current directory in long list format
+alias o="open ." # Open the current directory in Finder
+alias ut="uptime" # Computer uptime
+
+# -------
+
+# NPM Packages
+
+# -------
+
+alias ndep="npm publish --access=public"
+
+# ------------
+
+# ALL Projects
+
+# ------------
+
+# MyProjects
+
+alias pp='cd ~/MyProjects'
+alias prj='cd ~/MyProjects'
+#================== aem-learning ==================#
+alias lrn-aemAuthor="cd ~/aem-instances/AEM_6.5_Learning/author && java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=45012 -jar aem-author-p4502.jar -gui -nobrowser -verbose -nofork -r author,local,dynamicmedia_scene7 -Dadmin.password=admin"
+alias lrn-aemPublish="cd ~/aem-instances/AEM_6.5_Learning/publish && java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=45013 -jar aem-publish-p4503.jar -gui -nobrowser -verbose -nofork -r publish,local,dynamicmedia -Dadmin.password=admin"
+
+#aem-learning
+alias lrn-aeml-auth="mvn clean install -PautoInstallPackage,adobe-public -Daem.port=4502 -DskipTests"
+alias lrn-aeml-publ="mvn clean install -PautoInstallPackagePublish,adobe-public -Daem.port=4503 -DskipTests"
+alias lrn-aeml-both="mvn clean install -PautoInstallPackage,autoInstallPackagePublish -DskipTests"
+
+#=========================================================#
+
+# quick AEM SYNC from inside the directories
+
+alias aem-sync-auth="aemsync -t http://admin:admin@localhost:4502"
+alias aem-sync-pub="aemsync -t http://admin:admin@localhost:4503"
+
+alias aeml-auth="mvn clean install -PautoInstallPackage,adobe-public -Daem.port=4502 -DskipTests"
+alias aeml-publ="mvn clean install -PautoInstallPackagePublish,adobe-public -Daem.port=4503 -DskipTests"
+alias aeml-both="mvn clean install -PautoInstallPackage,autoInstallPackagePublish -DskipTests"
+
+alias aemlcln="mvn clean && rm -rf node node_modules lib package-lock.json"
+
+alias aeml-clpl="mvn clean && rm -rf ui.designs-react/node ui.designs-react/node_modules ui.designs-react/package-lock.json ui.designs-cc/node ui.designs-cc/node_modules ui.designs-cc/package-lock.json ui.apps/node ui.apps/node_modules ui.apps/package-lock.json ui.content/node ui.content/node_modules ui.content/package-lock.json ui.content/target"
+
+alias aeml-cln="mvn clean && rm -rf ui.designs-cc/node ui.designs-cc/node_modules ui.designs-cc/package-lock.json ui.designs-react/node ui.designs-react/node_modules ui.designs-react/package-lock.json ui.designs/node ui.designs/node_modules ui.designs/package-lock.json ui.frontend/node ui.frontend/node_modules ui.frontend/package-lock.json"
+
+alias aeml-cla="mvn clean && rm -rf ui.designs-cc/node ui.designs-cc/node_modules ui.designs-cc/package-lock.json ui.designs-react/node ui.designs-react/node_modules ui.designs-react/package-lock.json ui.designs/node ui.designs/node_modules ui.designs/package-lock.json ui.content/target ui.frontend/node ui.frontend/node_modules ui.frontend/package-lock.json"
+
+alias aemlog-auth="sublime ~/aem-instances/AEM_6.5/author/crx-quickstart/logs/error.log"
+alias aemlog-publ="sublime ~/aem-instances/AEM_6.5/publish/crx-quickstart/logs/error.log"
+
+# ---------------------------------------------
+
+#yarn
+alias yu='yarn upgrade-interactive'
+alias yi='yarn install'
+alias ya='yarn add'
+alias yad='yarn add --dev'
+alias yr='yarn remove'
+
+alias yss='yarn start'
+alias yas='yarn start'
+alias yrd='yarn run dev'
+alias yd='yarn run dev'
+alias yass='yarn starts'
+alias yaw='yarn run watch'
+alias ysm='yarn start:mocks'
+alias ytw='yarn test:watch'
+alias ytc='yarn test:coverage'
+alias ytus='yarn test:updatesnapshots'
+
+#npm
+alias nps='npm start'
+alias npd='npm run dev'
+alias npt='npm run test'
+alias ntw='npm run test:watch'
+alias ntwa='npm run test:watchAll'
+alias ntc='npm run test:coverage'
+alias ntus='npm run test:updatesnapshots'
+alias npch='npm run check-types && npm run lint:css:fix && npm run lint:js:fix'
+alias npchall='npm run check-types && npm run lint:css:fix && npm run lint:js:fix && npm run prod:fe && npm run test:coverage'
+
+#pnpm
+alias pcc='pnpm run lint && pnpm run ts && pnpm run test'
+alias pcu='pnpm run lint && pnpm run ts && pnpm run test:update'
+
+# ----------------------
+
+# Git Aliases
+
+# ----------------------
+
+alias ga='git add'
+alias gaa='git add .'
+alias gaaa='git add --all'
+alias gau='git add --update'
+alias gb='git branch'
+alias gbd='git branch --delete '
+alias gbD='git branch -D '
+alias gbDd='git branch -D develop'
+alias gbDm='git branch -D master'
+alias gc='git commit'
+alias gcm='git commit --message'
+alias gcf='git commit --fixup'
+alias gco='git checkout'
+alias gcob='git checkout -b'
+alias gcam='git commit -am'
+alias gchp='git cherry-pick'
+alias gcom='git checkout main'
+alias gcos='git checkout staging'
+alias gcod='git checkout develop'
+alias gcodd='git checkout dev'
+alias gd='git diff'
+alias gda='git diff HEAD'
+alias gi='git init'
+alias glg='git log --graph --oneline --decorate --all'
+alias glo='git log --pretty=oneline'
+alias gld='git log --pretty=format:'%h %ad %s' --date=short --all'
+alias gf='git fetch'
+alias gfCld='git fetch && git branch -D develop && git checkout develop'
+alias gfClm='git fetch && git branch -D master && git checkout master'
+alias gm='git merge --no-ff'
+alias gma='git merge --abort'
+alias gmc='git merge --continue'
+alias gpl='git pull'
+alias gpsh='git push'
+alias gpshu='git push -u'
+alias gpshuo='git push -u origin'
+alias gpshuob='git push -u origin $glf'
+
+alias gip='git pull'
+alias gPo='git push origin '
+alias gpr='git pull --rebase'
+alias gr='git rebase'
+alias grc='git rebase --continue'
+alias gmom='git merge origin/master'
+alias gmos='git merge origin/staging'
+alias gmod='git merge origin/develop'
+alias gmodd='git merge origin/dev'
+alias grom='git rebase origin/master'
+alias gros='git rebase origin/staging'
+alias grod='git rebase origin/develop'
+alias grodd='git rebase origin/development'
+alias gmod='git merge origin/development'
+alias gmodd='git merge origin/develop'
+alias gs='git status'
+alias gss='git status --short'
+alias gst='git stash'
+alias gsta='git stash apply'
+alias gstd='git stash drop'
+alias gstl='git stash list'
+alias gstp='git stash pop'
+alias gsts='git stash save'
+
+# hacks to show/hide hidden/dot files
+
+alias showFiles='defaults write com.apple.finder AppleShowAllFiles YES; killall Finder'
+alias hideFiles='defaults write com.apple.finder AppleShowAllFiles NO; killall Finder'
+
+# find processes which run on custom port
+
+alias findProcess='lsof -i'
+alias killProcess='kill -9 '
+
+alias exprt="export PORT=3015"
+alias mongods="mongod --config /usr/local/etc/mongod.conf"
+
+alias smongod='mongo --host 127.0.0.1:27017'
+alias python='python3'
+
+# AEM local instances (put author/publish jars under ~/aem-instances/AEM_6.5)
+alias aemAuthor="cd ~/aem-instances/AEM_6.5/author && java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=45012 -jar aem-author-p4502.jar -gui -nobrowser -verbose -nofork -r author,local -Dadmin.password=admin"
+alias aemPublish="cd ~/aem-instances/AEM_6.5/publish && java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=45013 -jar aem-publish-p4503.jar -gui -nobrowser -verbose -nofork -r publish,local,dynamicmedia_scene7 -Dadmin.password=admin"
+# deploy the AEM project in the current directory
+alias deployAuthor="mvn clean install -PautoInstallPackage -Dmaven.test.skip=true -PskipChecks"
+alias deployPublish="mvn clean install -PautoInstallPackagePublish -Dmaven.test.skip=true -PskipChecks"
+alias deployquick="mvn clean install -PautoInstallPackage -Dmaven.tests.skip=true -DskipChecks"
+alias spotlessAem="mvn spotless:apply"
+
+#============ MongoDB Services =============#
+alias start-mongod="brew services start mongodb-community@5.0"
+alias stop-mongod="brew services stop mongodb-community@5.0"
+
+alias spotlessAem="mvn spotless:apply"
+
+alias cleanupDocker="docker system prune -f"
+
+alias nosleep="caffeinate"

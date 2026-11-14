@@ -1,0 +1,6 @@
+.DS_Store
+*.bak
+# Never commit keys or machine answers
+id_*
+*.pem
+answers.sh

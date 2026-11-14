@@ -1,0 +1,7 @@
+# Keyboard layouts offered by `newmac configure`:  Name|KeyboardLayout ID
+# To add one: enable it once in System Settings > Keyboard > Input Sources,
+# then run `newmac capture` and it is appended here with the right ID.
+ABC|252
+U.S.|0
+Russian|19456
+Armenian-HM QWERTY|-28161

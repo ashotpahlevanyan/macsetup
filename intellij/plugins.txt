@@ -1,0 +1,5 @@
+# IntelliJ plugin IDs (from the JetBrains Marketplace page, "Plugin ID"),
+# installed with `idea installPlugins`. Anything after the ID is a comment.
+com.chrisrm.idea.MaterialThemeUI   Material Theme UI
+com.mallowigi                      Atom Material Icons
+ch.heiafr.intelliprolog            Prolog (PrologCode)

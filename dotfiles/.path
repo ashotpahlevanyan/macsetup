@@ -1,0 +1,23 @@
+# Sourced by ~/.zshrc and ~/.bashrc before anything else.
+
+# Homebrew (Apple Silicon first, Intel fallback): puts its bin/sbin FIRST.
+if [ -x /opt/homebrew/bin/brew ]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -x /usr/local/bin/brew ]; then
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
+
+# Unversioned `python` / `pip` -> Homebrew's latest Python 3
+[ -n "$HOMEBREW_PREFIX" ] && [ -d "$HOMEBREW_PREFIX/opt/python/libexec/bin" ] && \
+  PATH="$HOMEBREW_PREFIX/opt/python/libexec/bin:$PATH"
+
+# Personal bin dirs (Claude Code, pipx tools)
+PATH="$HOME/bin:$HOME/.local/bin:$PATH"
+
+# Java: SDKMAN (sourced at the end of ~/.zshrc) sets JAVA_HOME and PATH.
+#   Switch with: sdk use java <ver> / sdk default java <ver>
+# Node: nvm via the oh-my-zsh `nvm` plugin. Switch with: nvm use <ver>
+
+# Drop duplicate PATH entries (zsh only).
+[ -n "$ZSH_VERSION" ] && typeset -U path PATH
+export PATH

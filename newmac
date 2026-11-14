@@ -1,0 +1,167 @@
+#!/bin/bash
+# newmac — set up a fresh Mac the way I like it.
+#
+#   newmac init          ask the setup questions, then run every step
+#   newmac configure     only (re)answer the questions
+#   newmac <step> ...    run single steps, e.g. `newmac ssh iterm`
+#   newmac steps         list the steps
+#   newmac capture       copy this Mac's current IntelliJ / iTerm2 / keyboard
+#                        settings back into the repo
+#   newmac update        git pull this repo, then `brew upgrade`
+#
+# Re-running is safe: each step checks what is already there.
+
+# Resolve the repo directory even when called through a symlink.
+src=${BASH_SOURCE[0]}
+while [ -L "$src" ]; do
+  dir=$(cd -P "$(dirname "$src")" && pwd)
+  src=$(readlink "$src")
+  case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+done
+NEWMAC_DIR=$(cd -P "$(dirname "$src")" && pwd)
+export NEWMAC_DIR
+
+NEWMAC_CONFIG_DIR="$HOME/.config/newmac"
+NEWMAC_ANSWERS="$NEWMAC_CONFIG_DIR/answers.sh"
+NEWMAC_BACKUP_DIR="$HOME/.newmac-backup/$(date +%Y%m%d-%H%M%S)"
+NEWMAC_LOG="$NEWMAC_CONFIG_DIR/newmac.log"
+export NEWMAC_CONFIG_DIR NEWMAC_ANSWERS NEWMAC_BACKUP_DIR
+
+# shellcheck source=lib/ui.sh
+. "$NEWMAC_DIR/lib/ui.sh"
+# shellcheck source=lib/config.sh
+. "$NEWMAC_DIR/lib/config.sh"
+for f in "$NEWMAC_DIR"/steps/*.sh; do
+  # shellcheck disable=SC1090
+  . "$f"
+done
+
+# Order matters: interactive steps (ssh/GitHub login, App Store) run early so
+# you can walk away while the long downloads (Xcode, iOS runtime) finish.
+ALL_STEPS="homebrew packages git ssh shell iterm java node python intellij browsers macos xcode claude projects"
+
+step_description() {
+  case "$1" in
+    homebrew) echo "Xcode Command Line Tools + Homebrew" ;;
+    packages) echo "CLI tools, apps and fonts from packages/*.Brewfile" ;;
+    git)      echo "git user/email, GitHub CLI credential helper" ;;
+    ssh)      echo "SSH keys per GitHub account, ~/.ssh/config, upload keys with gh" ;;
+    shell)    echo "oh-my-zsh, plugins, theme, dotfiles (symlinked from this repo)" ;;
+    iterm)    echo "iTerm2 profile: font, color scheme, default dir" ;;
+    java)     echo "SDKMAN + latest Temurin JDK, Maven, Gradle" ;;
+    node)     echo "nvm + latest Node LTS, yarn, pnpm" ;;
+    python)   echo "Homebrew Python, pipx, uv" ;;
+    intellij) echo "IntelliJ plugins (Material Theme UI, Atom Material Icons, Prolog) + settings" ;;
+    browsers) echo "Adblock Plus for Chrome and Firefox" ;;
+    macos)    echo "trackpad, scrolling, key repeat, keyboard languages, computer name" ;;
+    xcode)    echo "Xcode, TestFlight, Developer app, license, latest iOS platform" ;;
+    claude)   echo "Claude Code CLI (native installer)" ;;
+    projects) echo "create the projects directory" ;;
+  esac
+}
+
+usage() {
+  sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+  echo
+  list_steps
+}
+
+list_steps() {
+  echo "Steps (in the order init runs them):"
+  local s
+  for s in $ALL_STEPS; do printf '  %-9s %s\n' "$s" "$(step_description "$s")"; done
+}
+
+keep_sudo_alive() {
+  [ -n "${NEWMAC_SUDO_PID:-}" ] && return 0
+  info "Some steps need administrator rights. Enter your Mac password once:"
+  sudo -v </dev/tty || die "sudo is required."
+  ( while kill -0 "$$" 2>/dev/null; do sudo -n true; sleep 50; done ) >/dev/null 2>&1 &
+  NEWMAC_SUDO_PID=$!
+  trap 'kill "$NEWMAC_SUDO_PID" 2>/dev/null' EXIT
+}
+
+FAILED_STEPS=''
+run_step() {
+  local s=$1
+  if ! type "step_$s" >/dev/null 2>&1; then
+    err "Unknown step: $s"; list_steps; return 1
+  fi
+  header "$s — $(step_description "$s")"
+  # Pick up anything an earlier step installed (brew, nvm, sdkman, ...).
+  load_tool_env
+  if "step_$s"; then
+    ok "$s done"
+  else
+    err "$s failed (continuing). Re-run later with: newmac $s"
+    FAILED_STEPS="$FAILED_STEPS $s"
+  fi
+}
+
+load_tool_env() {
+  [ -x /opt/homebrew/bin/brew ] && eval "$(/opt/homebrew/bin/brew shellenv)"
+  [ -x /usr/local/bin/brew ] && eval "$(/usr/local/bin/brew shellenv)"
+  case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) PATH="$HOME/.local/bin:$PATH" ;; esac
+  export PATH
+}
+
+summary() {
+  header "Summary"
+  if [ -n "$FAILED_STEPS" ]; then
+    warn "These steps failed:$FAILED_STEPS"
+    warn "Fix the cause shown above, then: newmac$FAILED_STEPS"
+  else
+    ok "Everything finished."
+  fi
+  cat <<EOF
+
+  Next:
+   • Log out and back in (or restart) so trackpad, keyboard and language
+     settings take full effect.
+   • Open iTerm2 — your new profile is the default.
+   • Chrome will ask you to enable Adblock Plus the first time it starts.
+   • Open IntelliJ IDEA once; plugins and theme are already in place.
+   • Backups of anything replaced are in: $NEWMAC_BACKUP_DIR
+   • Full log: $NEWMAC_LOG
+EOF
+}
+
+main() {
+  local cmd=${1:-help}
+  mkdir -p "$NEWMAC_CONFIG_DIR"
+  case "$cmd" in
+    -h|--help|help) usage; exit 0 ;;
+    steps|list)     list_steps; exit 0 ;;
+  esac
+
+  [ "$(uname -s)" = Darwin ] || die "newmac only runs on macOS."
+  # Log everything (minus prompts, which go to /dev/tty) for later reading.
+  exec > >(tee -a "$NEWMAC_LOG") 2>&1
+
+  case "$cmd" in
+    init|--init)
+      configure_interactive
+      keep_sudo_alive
+      local s; for s in $ALL_STEPS; do run_step "$s"; done
+      summary
+      ;;
+    configure|--configure)
+      configure_interactive
+      ;;
+    capture)
+      capture_current_settings
+      ;;
+    update)
+      git -C "$NEWMAC_DIR" pull --ff-only
+      load_tool_env; have brew && brew update && brew upgrade
+      ;;
+    *)
+      load_answers_or_configure
+      keep_sudo_alive
+      local s; for s in "$@"; do run_step "$s"; done
+      [ -n "$FAILED_STEPS" ] && { summary; exit 1; }
+      ;;
+  esac
+}
+
+main "$@"

@@ -20,9 +20,18 @@ One command to turn a freshly wiped Mac into my dev machine.
    login in the browser. Then it runs unattended. Xcode is the long part.
 4. Log out and back in when it finishes.
 
-> If this repo is private, the `curl` line won't work (no GitHub login yet).
-> Download the repo as a ZIP from github.com instead, then run
-> `bash macsetup-main/bootstrap.sh`, or copy the folder over from a USB stick.
+> No internet in Terminal yet, or prefer not to pipe into bash? Download the
+> repo as a ZIP from github.com and run `bash macsetup-main/bootstrap.sh`.
+
+### The questions
+
+| Topic | Asked | Default |
+|---|---|---|
+| Git & GitHub | name, GitHub username, commit email, optional work account | your GitHub `noreply` email |
+| Machine | projects folder, computer name | `~/MyProjects`, current name |
+| Software | which package groups to install | all of them |
+| Terminal | zsh theme, iTerm2 color scheme (11 to pick from), font, font size | agnoster, my saved Material profile, MesloLGS Nerd Font, 18 |
+| Keyboard | layouts to enable | ABC, Russian, Armenian-HM QWERTY |
 
 ## Commands
 
@@ -72,6 +81,16 @@ Every step is safe to re-run.
 - Replaced files are backed up to `~/.newmac-backup/<timestamp>/`.
   The run log is in `~/.config/newmac/newmac.log`.
 
+## Not installed on purpose
+
+Some aliases in `dotfiles/.aliases` point at tools you add only when a
+project needs them:
+
+- **MongoDB** (`start-mongod`, `smongod`, …):
+  `brew tap mongodb/brew && brew install mongodb-community mongosh`
+- **AEM** (`aemAuthor`, `deployAuthor`, …): put the author/publish jars under
+  `~/aem-instances/AEM_6.5/`.
+
 ## SSH with two GitHub accounts
 
 ```sh
@@ -82,11 +101,44 @@ git clone git@github-work:company/repo.git      # work key
 Repos under the work folder (default `~/MyProjects/work`) also commit with
 your work email and use the work key, via `includeIf` in `~/.gitconfig`.
 
+## Repo layout
+
+```
+newmac                 entry point: commands, step order, logging
+bootstrap.sh           first run on a wiped Mac (Command Line Tools, clone, newmac init)
+lib/ui.sh              messages, prompts, small helpers
+lib/config.sh          the setup questions; saves/loads answers.sh
+lib/capture.sh         `newmac capture`
+steps/*.sh             one step_<name> function per step, grouped by topic
+packages/*.Brewfile    what each package group installs
+dotfiles/              .zshrc, .aliases, .functions, … (symlinked into ~)
+iterm/                 saved iTerm2 profile + script that builds the default profile
+intellij/              plugin list + theme, color scheme, font and code-style settings
+macos/                 keyboard layout list (name|ID) + its parser
+```
+
+To add a step: write `step_<name>()` in a file under `steps/`, then add the
+name to `ALL_STEPS` and `step_description` in `newmac`.
+
+## Editing the scripts
+
+- They run on the **bash 3.2** that ships with macOS: no associative arrays,
+  `mapfile` or `${var,,}`.
+- Format and lint before committing (both via `brew install shfmt shellcheck`):
+
+  ```sh
+  shfmt -i 2 -ci -w newmac bootstrap.sh lib/*.sh steps/*.sh
+  shellcheck newmac bootstrap.sh lib/*.sh steps/*.sh
+  ```
+
+  `.shellcheckrc` and `.editorconfig` hold the settings.
+
 ## Notes
 
 - **IntelliJ**: JetBrains discontinued the separate Community Edition download.
   The single `IntelliJ IDEA` app is free to use without a subscription.
 - **Mac App Store apps** (Xcode, TestFlight, Developer) need you signed in to
   the App Store app. If that fails, the script opens the App Store and waits.
-- No secrets are stored here: SSH keys are created on each machine, and
-  `answers.sh` stays in `~/.config/newmac`.
+- **This repo is public**, so it holds no secrets and nothing employer- or
+  client-specific: SSH keys are created on each machine, and your answers
+  (`answers.sh`) stay in `~/.config/newmac`.

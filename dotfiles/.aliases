@@ -47,9 +47,7 @@ alias node-cln="npm cache clean --force"
 # -------
 
 alias clr="clear" # Clear your terminal screen
-alias flush="sudo discoveryutil udnsflushcaches" # Flush DNS (Yosemite)
-alias flush="killall -HUP mDNSResponder" # Flush DNS (Mavericks, Mountain Lion, Lion)
-alias flush="dscacheutil -flushcache" # Flush DNS (Snow Leopard, Leopard)
+alias flush="sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder" # Flush the DNS cache
 alias ip="curl icanhazip.com" # Your public IP address
 alias ll="ls -al" # List all files in current directory in long list format
 alias ldir="ls -al | grep ^d" # List all directories in current directory in long list format
@@ -219,9 +217,9 @@ alias findProcess='lsof -i'
 alias killProcess='kill -9 '
 
 alias exprt="export PORT=3015"
-alias mongods="mongod --config /usr/local/etc/mongod.conf"
+alias mongods='mongod --config "$(brew --prefix)/etc/mongod.conf"'
 
-alias smongod='mongo --host 127.0.0.1:27017'
+alias smongod='mongosh --host 127.0.0.1:27017'
 alias python='python3'
 
 # AEM local instances (put author/publish jars under ~/aem-instances/AEM_6.5)
@@ -234,8 +232,10 @@ alias deployquick="mvn clean install -PautoInstallPackage -Dmaven.tests.skip=tru
 alias spotlessAem="mvn spotless:apply"
 
 #============ MongoDB Services =============#
-alias start-mongod="brew services start mongodb-community@5.0"
-alias stop-mongod="brew services stop mongodb-community@5.0"
+# Not installed by newmac. When needed:
+#   brew tap mongodb/brew && brew install mongodb-community mongosh
+alias start-mongod="brew services start mongodb-community"
+alias stop-mongod="brew services stop mongodb-community"
 
 alias spotlessAem="mvn spotless:apply"
 

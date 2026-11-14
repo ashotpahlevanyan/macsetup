@@ -1,5 +1,3 @@
-function emulator { ( cd "$(dirname "$(whence -p emulator)")" && ./emulator "$@"; ) }
-
 # ----------------------
 # Git Functions
 # ----------------------

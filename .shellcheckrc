@@ -1,0 +1,5 @@
+# Scripts are sourced together by ./newmac; variables like GIT_NAME come from
+# ~/.config/newmac/answers.sh at run time.
+shell=bash
+# SC2024: `sudo -v </dev/tty` only needs the password from the terminal.
+disable=SC1090,SC1091,SC2024,SC2034,SC2153,SC2154

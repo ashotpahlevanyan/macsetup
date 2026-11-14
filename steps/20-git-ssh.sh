@@ -1,87 +1,110 @@
 # shellcheck shell=bash
-# git + ssh: one ed25519 key per GitHub account, ~/.ssh/config with a host
-# alias per account, keys uploaded to GitHub with `gh`.
 #
-#   personal:  git@github.com:user/repo.git
-#   work:      git@github-work:org/repo.git   (repos under WORK_DIR also
-#              commit with the work email via includeIf)
+# Steps: git, ssh
+#
+# One ed25519 key per GitHub account, and a host alias per account:
+#
+#   personal   git@github.com:user/repo.git
+#   work       git@github-work:org/repo.git
+#
+# Repos under WORK_DIR also commit with the work email (git includeIf).
+
+# ─── git ─────────────────────────────────────────────────────────────────────
 
 step_git() {
   have git || return 1
-  git config --global user.name  "$GIT_NAME"
+
+  git config --global user.name "$GIT_NAME"
   git config --global user.email "$GIT_EMAIL"
   git config --global init.defaultBranch main
   git config --global pull.rebase false
   git config --global push.autoSetupRemote true
   git config --global core.excludesfile "$HOME/.gitignore_global"
-  [ -f "$HOME/.gitignore_global" ] || printf '.DS_Store\n.idea/\n*.iml\n.vscode/\nnode_modules/\n.env\n' > "$HOME/.gitignore_global"
+  write_global_gitignore
 
-  if [ "${WORK_ENABLED:-n}" = y ]; then
-    local wd; wd=$(expand_tilde "$WORK_DIR")
-    printf '[user]\n\temail = %s\n[core]\n\tsshCommand = ssh -i ~/.ssh/id_ed25519_github_work -o IdentitiesOnly=yes\n' "$WORK_EMAIL" > "$HOME/.gitconfig-work"
-    git config --global "includeIf.gitdir:${wd%/}/.path" "$HOME/.gitconfig-work"
-    ok "repos under $wd use $WORK_EMAIL and the work key"
-  fi
+  [ "${WORK_ENABLED:-n}" = y ] && configure_work_identity
 
-  if have gh; then
-    # HTTPS remotes authenticate through gh (as on the old Mac).
-    gh auth setup-git >/dev/null 2>&1 || true
-  fi
+  # HTTPS remotes authenticate through gh (as on the previous Mac).
+  have gh && gh auth setup-git >/dev/null 2>&1
+
   ok "git: $GIT_NAME <$GIT_EMAIL>"
 }
 
-# make_key LABEL EMAIL -> creates ~/.ssh/id_ed25519_github_LABEL if missing
-make_key() {
-  local label=$1 email=$2 key="$HOME/.ssh/id_ed25519_github_$1"
-  if [ -f "$key" ]; then
-    ok "key exists: $key"
-  else
-    info "Creating SSH key for $email ($label). Choose a passphrase (stored in Keychain):"
-    ssh-keygen -t ed25519 -C "$email" -f "$key" </dev/tty >/dev/tty 2>&1 || return 1
-  fi
-  ssh-add --apple-use-keychain "$key" </dev/tty >/dev/tty 2>&1 || warn "could not add $key to the agent"
+write_global_gitignore() {
+  [ -f "$HOME/.gitignore_global" ] && return 0
+  cat >"$HOME/.gitignore_global" <<'EOF'
+.DS_Store
+.idea/
+*.iml
+.vscode/
+node_modules/
+.env
+EOF
 }
 
-# gh_login_and_upload GH_USER LABEL
-gh_login_and_upload() {
-  local user=$1 label=$2 pub="$HOME/.ssh/id_ed25519_github_$2.pub" title
-  title="$(scutil --get ComputerName 2>/dev/null || hostname) ($label)"
+configure_work_identity() {
+  local work_dir
+  work_dir=$(expand_tilde "$WORK_DIR")
 
-  if gh auth status --hostname github.com 2>/dev/null | grep -q "account $user"; then
-    gh auth switch --hostname github.com --user "$user" >/dev/null 2>&1
-    # Need the scope to upload keys.
-    if ! gh auth status --hostname github.com 2>&1 | grep -A6 "account $user" | grep -q 'admin:public_key'; then
-      gh auth refresh --hostname github.com --scopes admin:public_key </dev/tty >/dev/tty 2>&1 || return 1
-    fi
-  else
-    info "Log in to GitHub as ${C_BOLD}$user${C_RESET}${C_CYAN} in the browser that opens."
-    [ "$label" = work ] && warn "Sign out of $GH_USER on github.com first (or use a private window), or you'll authorize the wrong account."
-    gh auth login --hostname github.com --git-protocol ssh --skip-ssh-key --web \
-      --scopes admin:public_key </dev/tty >/dev/tty 2>&1 || return 1
-  fi
-
-  local who; who=$(gh api user --jq .login 2>/dev/null)
-  if [ "$who" != "$user" ]; then
-    err "gh is logged in as '$who', expected '$user'. Skipping key upload for $label."
-    return 1
-  fi
-
-  local fp; fp=$(awk '{print $2}' "$pub")
-  if gh ssh-key list 2>/dev/null | grep -q "$fp"; then
-    ok "$label key already on GitHub ($user)"
-  else
-    gh ssh-key add "$pub" --title "$title" --type authentication && ok "$label key uploaded to GitHub ($user)"
-  fi
+  cat >"$HOME/.gitconfig-work" <<EOF
+[user]
+	email = $WORK_EMAIL
+[core]
+	sshCommand = ssh -i ~/.ssh/id_ed25519_github_work -o IdentitiesOnly=yes
+EOF
+  git config --global "includeIf.gitdir:${work_dir%/}/.path" "$HOME/.gitconfig-work"
+  ok "repos under $work_dir use $WORK_EMAIL and the work key"
 }
+
+# ─── ssh ─────────────────────────────────────────────────────────────────────
 
 step_ssh() {
   mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
 
-  make_key personal "$GIT_EMAIL" || return 1
-  [ "${WORK_ENABLED:-n}" = y ] && { make_key work "$WORK_EMAIL" || return 1; }
+  create_ssh_key personal "$GIT_EMAIL" || return 1
+  if [ "${WORK_ENABLED:-n}" = y ]; then
+    create_ssh_key work "$WORK_EMAIL" || return 1
+  fi
 
-  # ~/.ssh/config: managed block on top, anything you add below it is kept.
+  write_ssh_config
+  add_github_host_keys
+
+  have gh || {
+    warn "gh not installed — upload keys later with: newmac ssh"
+    return 1
+  }
+  upload_key_to_github "$GH_USER" personal || return 1
+  if [ "${WORK_ENABLED:-n}" = y ]; then
+    upload_key_to_github "$WORK_GH_USER" work || warn "work key not uploaded"
+    gh auth switch --hostname github.com --user "$GH_USER" >/dev/null 2>&1
+  fi
+  gh auth setup-git >/dev/null 2>&1
+
+  switch_this_repo_to_ssh
+  test_github_ssh
+}
+
+# create_ssh_key LABEL EMAIL  ->  ~/.ssh/id_ed25519_github_LABEL
+create_ssh_key() {
+  local label=$1 email=$2
+  local key="$HOME/.ssh/id_ed25519_github_$label"
+
+  if [ -f "$key" ]; then
+    ok "key exists: $key"
+  else
+    info "Creating SSH key for $email ($label). Choose a passphrase (it is kept in Keychain):"
+    ssh-keygen -t ed25519 -C "$email" -f "$key" </dev/tty >/dev/tty 2>&1 || return 1
+  fi
+
+  ssh-add --apple-use-keychain "$key" </dev/tty >/dev/tty 2>&1 ||
+    warn "could not add $key to the SSH agent"
+}
+
+# The newmac block goes at the top of ~/.ssh/config; anything you add below
+# it is kept on re-runs.
+write_ssh_config() {
   [ -f "$HOME/.ssh/config" ] && cp "$HOME/.ssh/config" "$HOME/.ssh/config.bak"
+
   {
     cat <<EOF
 # Defaults for all hosts
@@ -90,7 +113,7 @@ Host *
   UseKeychain yes
   IdentitiesOnly yes
 
-# GitHub - personal ($GH_USER, default): git@github.com:user/repo.git
+# GitHub - personal ($GH_USER): git@github.com:user/repo.git
 Host github.com
   HostName github.com
   User git
@@ -107,37 +130,90 @@ Host github-work
 EOF
     fi
   } | write_managed_block "$HOME/.ssh/config" ssh
-  # A pre-existing unmanaged "Host *" block below ours would duplicate options
-  # harmlessly (ssh uses the first value it sees).
+
   chmod 600 "$HOME/.ssh/config"
-  ok "~/.ssh/config written"
+  ok "$HOME/.ssh/config written"
+}
 
-  # GitHub host keys from GitHub's HTTPS API, not blind trust-on-first-use.
-  if have jq; then
-    ssh-keygen -R github.com >/dev/null 2>&1
-    curl -fsSL https://api.github.com/meta | jq -r '.ssh_keys[]' | sed 's/^/github.com /' >> "$HOME/.ssh/known_hosts" \
-      && ok "GitHub host keys added to known_hosts"
+# Trust GitHub's host keys as published on its HTTPS API, instead of
+# accepting whatever answers on first connect.
+add_github_host_keys() {
+  have jq || return 0
+  ssh-keygen -R github.com >/dev/null 2>&1
+  curl -fsSL https://api.github.com/meta |
+    jq -r '.ssh_keys[]' |
+    sed 's/^/github.com /' >>"$HOME/.ssh/known_hosts" &&
+    ok "GitHub host keys added to known_hosts"
+}
+
+# upload_key_to_github GITHUB_USER LABEL
+upload_key_to_github() {
+  local user=$1 label=$2
+  local public_key="$HOME/.ssh/id_ed25519_github_$label.pub"
+  local title
+  title="$(scutil --get ComputerName 2>/dev/null || hostname) ($label)"
+
+  log_in_to_github "$user" "$label" || return 1
+
+  local logged_in_as
+  logged_in_as=$(gh api user --jq .login 2>/dev/null)
+  if [ "$logged_in_as" != "$user" ]; then
+    err "gh is logged in as '$logged_in_as', expected '$user'. Skipping the $label key."
+    return 1
   fi
 
-  have gh || { warn "gh not installed — upload keys later with: newmac ssh"; return 1; }
-  gh_login_and_upload "$GH_USER" personal || return 1
-  if [ "${WORK_ENABLED:-n}" = y ]; then
-    gh_login_and_upload "$WORK_GH_USER" work || warn "work key not uploaded"
-    gh auth switch --hostname github.com --user "$GH_USER" >/dev/null 2>&1
+  local fingerprint
+  fingerprint=$(awk '{print $2}' "$public_key")
+  if gh ssh-key list 2>/dev/null | grep -q "$fingerprint"; then
+    ok "$label key already on GitHub ($user)"
+  else
+    gh ssh-key add "$public_key" --title "$title" --type authentication &&
+      ok "$label key uploaded to GitHub ($user)"
   fi
-  gh auth setup-git >/dev/null 2>&1 || true
+}
 
-  # The repo was cloned over HTTPS by bootstrap.sh; switch it to SSH so you
-  # can push changes to your dotfiles.
-  local origin; origin=$(git -C "$NEWMAC_DIR" remote get-url origin 2>/dev/null)
+# Make USER the active gh account, logging in through the browser if needed.
+# Uploading keys needs the admin:public_key scope.
+log_in_to_github() {
+  local user=$1 label=$2
+
+  if gh auth status --hostname github.com 2>/dev/null | grep -q "account $user"; then
+    gh auth switch --hostname github.com --user "$user" >/dev/null 2>&1
+    if ! gh auth status --hostname github.com 2>&1 | grep -A6 "account $user" | grep -q 'admin:public_key'; then
+      gh auth refresh --hostname github.com --scopes admin:public_key </dev/tty >/dev/tty 2>&1
+    fi
+    return
+  fi
+
+  info "Log in to GitHub as ${BOLD}$user${RESET}${CYAN} in the browser that opens."
+  if [ "$label" = work ]; then
+    warn "Sign out of $GH_USER on github.com first (or use a private window),"
+    warn "otherwise you authorize the wrong account."
+  fi
+  gh auth login --hostname github.com --git-protocol ssh --skip-ssh-key --web \
+    --scopes admin:public_key </dev/tty >/dev/tty 2>&1
+}
+
+# bootstrap.sh cloned this repo over HTTPS; switch it to SSH so you can push.
+switch_this_repo_to_ssh() {
+  local origin
+  origin=$(git -C "$NEWMAC_DIR" remote get-url origin 2>/dev/null)
   case "$origin" in
     https://github.com/*)
-      local slug=${origin#https://github.com/}
-      git -C "$NEWMAC_DIR" remote set-url origin "git@github.com:${slug%.git}.git" && ok "macsetup remote -> SSH" ;;
+      local repo=${origin#https://github.com/}
+      git -C "$NEWMAC_DIR" remote set-url origin "git@github.com:${repo%.git}.git" &&
+        ok "macsetup remote -> SSH"
+      ;;
   esac
+}
 
+test_github_ssh() {
   info "Testing SSH to GitHub…"
-  ssh -T git@github.com 2>&1 | grep -i 'successfully authenticated' && ok "personal SSH works"
-  [ "${WORK_ENABLED:-n}" = y ] && ssh -T git@github-work 2>&1 | grep -i 'successfully authenticated' && ok "work SSH works"
+  ssh -T git@github.com 2>&1 | grep -qi 'successfully authenticated' &&
+    ok "personal SSH works"
+  if [ "${WORK_ENABLED:-n}" = y ]; then
+    ssh -T git@github-work 2>&1 | grep -qi 'successfully authenticated' &&
+      ok "work SSH works"
+  fi
   return 0
 }

@@ -4,3 +4,7 @@
 id_*
 *.pem
 answers.sh
+
+# Editor project files
+.idea/
+.vscode/
